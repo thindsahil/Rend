@@ -69,7 +69,7 @@ void Window::SetupFrameBuffer() {
      frameBuffer.BitmapInfo.bmiHeader.biSize = sizeof(frameBuffer.BitmapInfo.bmiHeader);
      frameBuffer.BitmapInfo.bmiHeader.biWidth = WIDTH;
      frameBuffer.BitmapInfo.bmiHeader.biHeight = HEIGHT;
-     frameBuffer.BitmapInfo.bmiHeader.biBitCount = 32;
+     frameBuffer.BitmapInfo.bmiHeader.biBitCount = 8*sizeof(PIXEL32);
      frameBuffer.BitmapInfo.bmiHeader.biCompression = BI_RGB;
      frameBuffer.BitmapInfo.bmiHeader.biPlanes = 1;
 
@@ -113,3 +113,4 @@ FRAMEBITMAP& Window::GetFrameBuffer()
 {
     return frameBuffer;
 }
+
