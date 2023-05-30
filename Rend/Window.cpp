@@ -18,7 +18,7 @@ Window::Window(int width, int height)
      : m_hInstance(GetModuleHandle(nullptr)),
        WIDTH(width),
        HEIGHT(height),
-       FRAME_MEMORY_SIZE(width*height * sizeof(PIXEL32))
+       FRAME_MEMORY_SIZE(width*height * sizeof(COLOR32))
 {
      
      const wchar_t* CLASS_NAME = L"Window Class";
@@ -69,7 +69,7 @@ void Window::SetupFrameBuffer() {
      frameBuffer.BitmapInfo.bmiHeader.biSize = sizeof(frameBuffer.BitmapInfo.bmiHeader);
      frameBuffer.BitmapInfo.bmiHeader.biWidth = WIDTH;
      frameBuffer.BitmapInfo.bmiHeader.biHeight = HEIGHT;
-     frameBuffer.BitmapInfo.bmiHeader.biBitCount = 8*sizeof(PIXEL32);
+     frameBuffer.BitmapInfo.bmiHeader.biBitCount = 8*sizeof(COLOR32);
      frameBuffer.BitmapInfo.bmiHeader.biCompression = BI_RGB;
      frameBuffer.BitmapInfo.bmiHeader.biPlanes = 1;
 

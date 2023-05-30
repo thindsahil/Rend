@@ -4,7 +4,7 @@
 cmake_minimum_required (VERSION 3.8)
 
 # Add source to this project's executable.
-add_executable (Rend "main.cpp" "Window.cpp" "Geometry.h")
+add_executable (Rend "main.cpp" "Window.cpp" "Geometry.h" "ObjLoader.h")
 
 # TODO: Add tests and install targets if needed.
 install (TARGETS Rend DESTINATION "Rend/bin")

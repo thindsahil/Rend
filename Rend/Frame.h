@@ -1,5 +1,6 @@
 //#include <stdlib.h>
 #include <iostream>
+#include <algorithm>
 #include "Geometry.h"
 
 typedef struct FRAMEBITMAP {
@@ -7,33 +8,45 @@ typedef struct FRAMEBITMAP {
     void* pixels;
 } FRAMEBITMAP;
 
-typedef struct PIXEL32 {
+typedef struct COLOR32 {
     uint8_t blue;
     uint8_t green;
     uint8_t red;
     uint8_t alpha;
-} PIXEL32;
+    COLOR32(uint8_t b, uint8_t g, uint8_t r, uint8_t a) : blue(b), green(g), red(r), alpha(a) {};
+} COLOR32;
 
 
-inline void SetPixel(int x, int y, FRAMEBITMAP& frameBuffer, PIXEL32& color) {
+inline void SetPixel(int x, int y, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
     //TODO: add bounds
-    PIXEL32* coord = (PIXEL32*) frameBuffer.pixels + (frameBuffer.BitmapInfo.bmiHeader.biWidth * y) + x;
-    memcpy_s(coord, sizeof(PIXEL32), &color, sizeof(PIXEL32));
+    if (x < 0 || y < 0) {
+        //std::cout << "x: " << x << " y: " << y << "\n";
+        return;
+
+    }
+    else if (x >= frameBuffer.BitmapInfo.bmiHeader.biWidth || y >= frameBuffer.BitmapInfo.bmiHeader.biHeight) {
+        //std::cout << "x: " << x << " y: " << y << "\n";
+        return;
+    }
+
+    COLOR32* coord = (COLOR32*)frameBuffer.pixels + (frameBuffer.BitmapInfo.bmiHeader.biWidth * y) + x;
+    memcpy_s(coord, sizeof(COLOR32), &color, sizeof(COLOR32));
+
 
 }
 
-inline void FillRect(int x, int y, int w, int h, FRAMEBITMAP& frameBuffer, PIXEL32& color) {
+inline void FillRect(int x, int y, int w, int h, FRAMEBITMAP& frameBuffer,const  COLOR32& color) {
     //TODO: add bounds
     for (int j = y; j < y+h; j++) {
         for (int i = x; i < x+w; i++) {
-            PIXEL32* coord = (PIXEL32*)frameBuffer.pixels + (frameBuffer.BitmapInfo.bmiHeader.biWidth * j) + i;
-            memcpy_s(coord, sizeof(PIXEL32), &color, sizeof(PIXEL32));
+            COLOR32* coord = (COLOR32*)frameBuffer.pixels + (frameBuffer.BitmapInfo.bmiHeader.biWidth * j) + i;
+            memcpy_s(coord, sizeof(COLOR32), &color, sizeof(COLOR32));
             //SetPixel(i, j, frameBuffer, color); 
         }
     }
 }
 
-inline void DrawLine(int x0, int y0, int x1, int y1, FRAMEBITMAP& frameBuffer, PIXEL32& color) {
+inline void DrawLine(int x0, int y0, int x1, int y1, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
     //TODO:  Cleanup later and add bounds
     int dx = abs(x1 - x0);
     int dy = abs(y1 - y0);
@@ -47,7 +60,7 @@ inline void DrawLine(int x0, int y0, int x1, int y1, FRAMEBITMAP& frameBuffer, P
         }
         float m = (y1 - y0) / (float)dx;
         int x = x0;
-        int b = y0 - m * x0;
+        int b = y0 - round(m * x0);
         while (x <= x1) {
             int y = round(m * x + b);
             SetPixel(x, y, frameBuffer, color);
@@ -71,7 +84,7 @@ inline void DrawLine(int x0, int y0, int x1, int y1, FRAMEBITMAP& frameBuffer, P
     }
 }
 
-inline void DrawLine(Vec2I a, Vec2I b,  FRAMEBITMAP& frameBuffer, PIXEL32& color) {
+inline void DrawLine(Vec2I a, Vec2I b,  FRAMEBITMAP& frameBuffer, const COLOR32& color) {
     DrawLine(a.x, a.y, b.x, b.y, frameBuffer, color);
 }
 
@@ -85,18 +98,51 @@ inline Vec3F barycentric(Vec2I a, Vec2I b, Vec2I c, Vec2I p) {
     return Vec3F(u, v, w);
 }
 
-inline void DrawTriangle(Vec2I a, Vec2I b, Vec2I c, FRAMEBITMAP& frameBuffer, PIXEL32& color) {
+inline Vec3F barycentricF(Vec3F a, Vec3F b, Vec3F c, Vec3F p) {
+    Vec3F v0 = b - a, v1 = c - a, v2 = p - a;
+    float den = v0.x * v1.y - v1.x * v0.y;
+    float v = (v2.x * v1.y - v1.x * v2.y) / den;
+    float w = (v0.x * v2.y - v2.x * v0.y) / den;
+    float u = 1.0f - v - w;
+    return Vec3F(u, v, w);
+}
+
+
+inline void DrawTriangle(Vec2I a, Vec2I b, Vec2I c, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
     //  Bounding box
-    int xMin = min(a.x, b.x, c.x); xMin  = max(0, xMin);
-    int xMax = max(a.x, b.x, c.x); xMax = min(frameBuffer.BitmapInfo.bmiHeader.biWidth - 1, xMax);
-    int yMin = min(a.y, b.y, c.y); yMin = max(0, yMin);
-    int yMax = max(a.y, b.y, c.y); yMax = min(frameBuffer.BitmapInfo.bmiHeader.biHeight - 1, yMax);
+    int xMin = std::min<int>({ a.x, b.x, c.x }); xMin = std::max<int>( 0, xMin );
+    int xMax = std::max<int>({ a.x, b.x, c.x }); xMax = std::min<int>( frameBuffer.BitmapInfo.bmiHeader.biWidth - 1, xMax );
+    int yMin = std::min<int>({ a.y, b.y, c.y }); yMin = std::max<int>( 0, yMin );
+    int yMax = std::max<int>({ a.y, b.y, c.y }); yMax = std::min<int>( frameBuffer.BitmapInfo.bmiHeader.biHeight - 1, yMax);
 
     for (int x = xMin; x <= xMax; x++) {
         for (int y = yMin; y <= yMax; y++) {
             Vec3F bc = barycentric(a, b, c, Vec2I(x, y));
             if (bc.x < 0 || bc.y < 0 || bc.z < 0) continue;
             SetPixel(x, y, frameBuffer, color);
+        }
+    }
+}
+
+inline void DrawTriangleMesh(Vec3F* pts, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
+    DrawLine((int) pts[0].x, (int) pts[0].y, (int) pts[1].x, (int) pts[1].y, frameBuffer, color);
+    DrawLine((int) pts[0].x, (int) pts[0].y, (int) pts[2].x, (int) pts[2].y, frameBuffer, color);
+    DrawLine((int) pts[1].x, (int) pts[1].y, (int) pts[2].x, (int) pts[2].y, frameBuffer, color);
+}
+
+inline void DrawTriangleSC(Vec3F* pts, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
+    //  Bounding box
+    int xMin = std::min<float>({ pts[0].x, pts[1].x, pts[2].x }); xMin = std::max<float>(0, xMin);
+    int xMax = std::max<float>({ pts[0].x, pts[1].x, pts[2].x }); xMax = std::min<float>(frameBuffer.BitmapInfo.bmiHeader.biWidth - 1, xMax);
+    int yMin = std::min<float>({ pts[0].y, pts[1].y, pts[2].y }); yMin = std::max<float>(0, yMin);
+    int yMax = std::max<float>({ pts[0].y, pts[1].y, pts[2].y }); yMax = std::min<float>(frameBuffer.BitmapInfo.bmiHeader.biHeight - 1, yMax);
+
+    Vec3F P;
+    for (P.x = xMin; P.x <= xMax; P.x++) {
+        for (P.y = yMin; P.y <= yMax; P.y++) {
+            Vec3F bcScreen = barycentricF(pts[0], pts[1], pts[2], P);
+            if (bcScreen.x < 0 || bcScreen.y < 0 || bcScreen.z < 0) continue;
+            SetPixel(P.x, P.y, frameBuffer, color);
         }
     }
 }
