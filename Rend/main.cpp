@@ -19,13 +19,13 @@ COLOR32 randColor() {
 
 Mat4F makeViewportMat(int x, int y, int w, int h) {
     Mat4F v;
-    v[0][3] = x + w / 2.f;
-    v[1][3] = y + h / 2.f;
-    v[2][3] = 10.0f / 2.f;
+    v[0][3] = (x + w) / 2.f;
+    v[1][3] = (y + h) / 2.f;
+    v[2][3] = 0.5f;
 
-    v[0][0] = w / 2.f;
-    v[1][1] = h / 2.f;
-    v[2][2] = 10.0f / 2.f;
+    v[0][0] = (w - 1) / 2.f;
+    v[1][1] = (h - 1) / 2.f;
+    v[2][2] = 1.0f;
     v[3][3] = 1.0f;
     return v;
 }
@@ -42,27 +42,34 @@ Mat4F makeViewMat(Vec3F eye, Vec3F target, Vec3F up) {
     v.setCol(Vec4F(k, 0.0), 2);
     v.setCol(Vec4F(eye, 1.0), 3);
 
-    //v[0][0] = 1.0f;
-    //v[1][1] = 1.0f;
-    //v[2][2] = 1.0f;
-    //v[3][3] = 1.0f;
-
-
-
     return v;
 }
 
-Mat4F makeProjectionMat(float fovDeg, float aspectRatio, float fNear, float fFar) {
-    Mat4F projection;
 
-    float fovRad = 1.0f / tanf(fovDeg * 0.5f * 3.14159f / 180);
-    projection[0][0] = aspectRatio * fovRad;
-    projection[1][1] = fovRad;
-    projection[2][2] = -(fFar + fNear) / (fFar - fNear);
-    projection[3][2] = (-2*fFar * fNear) / (fFar - fNear);
-    projection[2][3] = -1.0f;
-    projection[3][3] = 0.0f;
-    return projection;
+Mat4F makePerspectiveMat(float fovDeg, float aspectRatio, float zNear, float zFar) {
+    Mat4F M;
+    float fovRad = tanf(fovDeg * 0.5f * 3.14159f / 180);
+    M[0][0] = 1/(aspectRatio * fovRad);  
+    M[1][1] = 1 / fovRad;
+    M[2][2] = -(zFar + zNear) / (zFar - zNear);
+    M[3][2] = -1;
+    M[2][3] = -(2 * zFar * zNear) / (zFar - zNear);
+    return M;
+}
+
+Mat4F makeOrthographicMat(float left, float right, float top, float bottom, float fNear, float fFar) {
+    Mat4F M;
+
+    M[0][0] = 2.0f / (right - left);
+    M[1][1] = 2.0f / (top - bottom);
+    M[2][2] = -2.0f / (fFar - fNear);
+    M[3][3] = 1.0f;
+
+    M[0][3] = -(right + left) / (right - left);
+    M[1][3] = -(top + bottom) / (top - bottom);
+    M[2][3] = -(fFar + fNear) / (fFar - fNear);
+
+    return M;
 }
 
 Mat4F makeRotX(float xAngleRad) {
@@ -126,12 +133,16 @@ void test() {
     M2.setCol(Vec4F(9, 9, 9, 9), 3);
     std::cout << "2nd column changed:\n" << M2 << std::endl;
 
+    V2.normalize();
+    std::cout << "Normailize:" << std::endl;
+    std::cout << V2 << std::endl;
+
 }
 
 int main(int argc, char* argv[])
 {   
     //test();
-
+    //return 1;
     std::cout << "creating window...\n";
     std::cout << argv[0] << "\n";
     Window* pWindow = new Window(WIDTH, HEIGHT);
@@ -142,27 +153,31 @@ int main(int argc, char* argv[])
     if (model.valid) {
         std::cout << "# of vertices: " << model.vertices.size() << "\n";
     }
+
+
     //  projection matrix
     float fNear = 0.1f;
-    float fFar = 10.0f;
+    float fFar = 100.0f;
     float fFov = 90.0f;
     float fAspectRatio = (float)HEIGHT / WIDTH;
-    Mat4F proj = makeProjectionMat(fFov, fAspectRatio, fNear, fFar);
+    Mat4F pProj = makePerspectiveMat(fFov, fAspectRatio, fNear, fFar);
+    Mat4F oProj = makeOrthographicMat(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
 
     // view matrix
-    Vec3F eye(2, 1, 1);
-    Vec3F target(0,1,1);
-    Mat4F modelView = makeViewMat(eye, target, Vec3F(1, 1, 1));
+    Vec3F eye(0, 0, 2);
+    Vec3F target(0,0,0);
+    Mat4F modelView = makeViewMat(eye, target, Vec3F(0, 1, 0));
+
     
     //viewport
     Mat4F viewport = makeViewportMat(0, 0, WIDTH, HEIGHT);
 
     bool running = true;
 
-    float angle = 0.5f;
-    Mat4F rotX = makeRotX(angle);
-    Mat4F rotY = makeRotY(angle);
-    Mat4F rotZ = makeRotZ(angle);
+    float angle = 3.14159f;
+    Mat4F rotX = makeRotX(angle/2);
+    Mat4F rotY = makeRotY(angle/8);
+    Mat4F rotZ = makeRotZ(angle/2);
 
     while (running) {
         if (!pWindow->ProcessMessages()) {
@@ -175,11 +190,15 @@ int main(int argc, char* argv[])
             Vec3F triangle[3];
             for (int j = 0; j < 3; j++) {
                 Vec4F temp = Vec4F(model.vertices[i + j].pos, 1.0);
-                Vec4F rotV = rotZ * temp;
-                model.vertices[i + j].pos = Vec3F(rotV.x, rotV.y, rotV.z);
+                Vec4F V = rotY *  temp;
+                model.vertices[i + j].pos = Vec3F(V.x, V.y, V.z);
 
-                temp = viewport * proj * modelView * rotY * rotV;
-                //temp = viewport * temp;
+                temp = pProj * modelView * V;
+                temp.x = (temp.x / temp.w);
+                temp.y = (temp.y / temp.w);
+                temp.z = (temp.z / temp.w);
+                temp.w = (temp.w / temp.w);
+                temp = viewport * temp;
                 triangle[j] = Vec3F(temp.x, temp.y, temp.z);
 
             }
