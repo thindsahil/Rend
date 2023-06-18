@@ -3,6 +3,7 @@
 #include <limits>
 #include "Window.h"
 #include "ObjLoader.h"
+#include "VecMath.h"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -34,8 +35,8 @@ Mat4F makeViewMat(Vec3F eye, Vec3F target, Vec3F up) {
     Mat4F v;
 
     Vec3F k = (eye - target).normalize();
-    Vec3F i = (up ^ k).normalize();
-    Vec3F j = (k ^ i).normalize();
+    Vec3F i = cross(up, k).normalize();
+    Vec3F j = cross(k, i).normalize();
 
     v.setCol(Vec4F(i, 0.0), 0);
     v.setCol(Vec4F(j, 0.0), 1);
@@ -107,6 +108,29 @@ Mat4F makeRotZ(float rotAngleRad) {
     return rot;
 }
 
+void processCameraControls(Mat4F& viewMat) {
+    if (GetAsyncKeyState(VK_UP)) {
+        std::cout << "UP presesd\n";
+        //eye.y += 0.1;
+        viewMat[1][3] -= 0.1;
+    }
+    if (GetAsyncKeyState(VK_DOWN)) {
+        std::cout << "Down presesd\n";
+        //eye.y -= 0.1;
+        viewMat[1][3] += 0.1;
+    }
+    if (GetAsyncKeyState(VK_LEFT)) {
+        std::cout << "UP presesd\n";
+        //eye.y += 0.1;
+        viewMat[0][3] += 0.1;
+    }
+    if (GetAsyncKeyState(VK_RIGHT)) {
+        std::cout << "Down presesd\n";
+        //eye.y -= 0.1;
+        viewMat[0][3] -= 0.1;
+    }
+}
+
 
 void test() {
 
@@ -143,8 +167,8 @@ int main(int argc, char* argv[])
 {   
     //test();
     //return 1;
-    std::cout << "creating window...\n";
-    std::cout << argv[0] << "\n";
+    //std::cout << "creating window...\n";
+    //std::cout << argv[0] << "\n";
     Window* pWindow = new Window(WIDTH, HEIGHT);
     FRAMEBITMAP frame = pWindow->GetFrameBuffer();
 
@@ -153,64 +177,95 @@ int main(int argc, char* argv[])
     if (model.valid) {
         std::cout << "# of vertices: " << model.vertices.size() << "\n";
     }
-
+    else {
+        return 0;
+    }
 
     //  projection matrix
-    float fNear = 0.1f;
-    float fFar = 100.0f;
-    float fFov = 90.0f;
-    float fAspectRatio = (float)HEIGHT / WIDTH;
-    Mat4F pProj = makePerspectiveMat(fFov, fAspectRatio, fNear, fFar);
-    Mat4F oProj = makeOrthographicMat(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+    float zNear = 0.1f;
+    float zFar = 100.0f;
+    float fov = 90.0f;
+    float aspectRatio = (float)HEIGHT / WIDTH;
+    Mat4F pProj = makePerspectiveMat(fov, aspectRatio, zNear, zFar);
+    Mat4F oProj = makeOrthographicMat(-1.0, 1.0, -1.0, 1.0, 0.0, -10.0);
 
     // view matrix
     Vec3F eye(0, 0, 2);
     Vec3F target(0,0,0);
     Mat4F modelView = makeViewMat(eye, target, Vec3F(0, 1, 0));
-
     
     //viewport
     Mat4F viewport = makeViewportMat(0, 0, WIDTH, HEIGHT);
 
-    bool running = true;
-
+    //  rotation matrices
     float angle = 3.14159f;
     Mat4F rotX = makeRotX(angle/2);
-    Mat4F rotY = makeRotY(angle/8);
+    Mat4F rotY = makeRotY(angle/60);
     Mat4F rotZ = makeRotZ(angle/2);
+    Vec3F light(2, 1, 3);
+    light.normalize();
 
+    float* zBuf = new float[WIDTH * HEIGHT];
+
+    //  rotate teapot model by 90 deg initially
+    for (int i = 0; i < model.vertices.size(); i++) {
+        Vec4F temp = Vec4F(model.vertices[i].pos, 1.0);
+        temp = rotX * temp;
+        model.vertices[i].pos = Vec3F(temp.x, temp.y, temp.z);
+    }
+
+    bool running = true;
     while (running) {
         if (!pWindow->ProcessMessages()) {
             std::cout << "closing window\n";
             running = false;
         }
-        // pWindow->ProcessKeyboardInput();
+         //pWindow->ProcessKeyboardInput();
+        processCameraControls(modelView);
 
+        //  reset Z-Buffer
+        std::fill_n(zBuf, WIDTH * HEIGHT, std::numeric_limits<float>::lowest());
+  
         for (int i = 0; i < model.vertices.size(); i += 3) {
             Vec3F triangle[3];
+            Vec3F t[3];
             for (int j = 0; j < 3; j++) {
-                Vec4F temp = Vec4F(model.vertices[i + j].pos, 1.0);
-                Vec4F V = rotY *  temp;
-                model.vertices[i + j].pos = Vec3F(V.x, V.y, V.z);
+                Vec4F V = Vec4F(model.vertices[i + j].pos, 1.0);
+                Vec4F temp = rotY * V;
+                model.vertices[i + j].pos = Vec3F(temp.x, temp.y, temp.z);
 
-                temp = pProj * modelView * V;
-                temp.x = (temp.x / temp.w);
-                temp.y = (temp.y / temp.w);
-                temp.z = (temp.z / temp.w);
-                temp.w = (temp.w / temp.w);
-                temp = viewport * temp;
-                triangle[j] = Vec3F(temp.x, temp.y, temp.z);
+                V = pProj * modelView * temp;
+
+                V.x = (V.x / V.w);
+                V.y = (V.y / V.w);
+                V.z = (V.z / V.w);
+                V.w = (V.w / V.w);
+
+                t[j] = Vec3F(V.x, V.y, V.z);
+                V = viewport * V;
+                triangle[j] = Vec3F(V.x, V.y, V.z);
 
             }
-            DrawTriangleSC(triangle,frame, COLOR32(i/3,0,0, 0xFF));
+
+            Vec3F n = cross(t[2] - t[0],t[1] - t[0]);
+            n.normalize();
+
+            //  colour of face
+            float in = dot(light, n);
+
+            if (in > 0) {
+                DrawTriangleZ3(triangle, zBuf,frame, COLOR32(in * 0xFF, in * 0xFF, in * 0xFF, 0xFF));
+            }
 
         }
 
         pWindow->Render();
-        Sleep(100);
+        Sleep(1);
         FillRect(0, 0, WIDTH, HEIGHT, frame, BLACK);
-    }
 
+        //DrawLine()
+    }
+    delete[] zBuf;
     delete pWindow;
     return 0;
 }

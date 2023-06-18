@@ -5,7 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include "Geometry.h"
+#include "VecMath.h"
 
 struct Vertex {
 	Vec3F pos;
@@ -107,6 +107,7 @@ public:
 		}
 
 		//	Build Mesh
+		//std::cout << "test: " << posIndices.size() << std::endl;
 		model.vertices.resize(posIndices.size(), Vertex());
 		for (unsigned int i = 0; i < model.vertices.size(); i++) {
 			model.vertices[i].pos = vertexPositions[posIndices[i] - 1];

@@ -2,7 +2,7 @@
 //	TODO: FIX LATER
 #pragma once
 
-template<typename T> 
+template<typename T>
 struct Vec2 {
 	union {
 		struct { T x, y; };
@@ -13,20 +13,20 @@ struct Vec2 {
 	Vec2(T a, T b) : x(a), y(b) {}
 	bool operator ==(const Vec2<T>& other) const { return x == other.x && y == other.y; }
 	Vec2<T> operator +(const Vec2<T>& right) const { return Vec2<T>(x + right.x, y + right.y); }
-	Vec2<T> operator -(const Vec2<T>& right) const { return Vec2<T>(x - right.x, y - right.y); }	
+	Vec2<T> operator -(const Vec2<T>& right) const { return Vec2<T>(x - right.x, y - right.y); }
 	Vec2<T> operator *(float f)          const { return Vec2<T>(x * f, y * f); }
 	T& operator [](const int i) { return data[i]; }
 	const T& operator [](const int i) const { return data[i]; }
 
-	//	Dot Product
-	T       operator *(const Vec2<T>& v) const { return x * v.x + y * v.y; }
+	float length() const { return std::sqrt(x * x + y * y); }
+	Vec2<T>& normalize(T l = 1) { *this = (*this) * (l / length()); return *this; }
 };
 
 template<typename T>
 struct Vec3 {
 	union {
 		struct { T x, y, z; };
-		struct { T u, v, w; };
+		//struct { T u, v, w; };
 		T data[3];
 	};
 	Vec3() : x(0), y(0), z(0) {}
@@ -36,20 +36,14 @@ struct Vec3 {
 	Vec3<T> operator +(const Vec3<T>& right) const { return Vec3<T>(x + right.x, y + right.y, z + right.z); }
 	Vec3<T> operator -(const Vec3<T>& right) const { return Vec3<T>(x - right.x, y - right.y, z - right.z); }
 	Vec3<T> operator *(float f)          const { return Vec3<T>(x * f, y * f, z * f); }
-	T& operator [](const int i)  { return data[i]; }
+	T& operator [](const int i) { return data[i]; }
 	const T& operator [](const int i) const { return data[i]; }
 
-	//	Cross Product
-	Vec3<T> operator ^(const Vec3<T>& v) const { return Vec3<T>(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x); }
-
-	//	Dot Product
-	T       operator *(const Vec3<T>& v) const { return x * v.x + y * v.y + z * v.z; }
-
-	float norm() const { return std::sqrt(x * x + y * y + z * z); }
-	Vec3<T>& normalize(T l = 1) { *this = (*this) * (l / norm()); return *this; }
+	float length() const { return std::sqrt(x * x + y * y + z * z); }
+	Vec3<T>& normalize(T l = 1) { *this = (*this) * (l / length()); return *this; }
 };
 
-template<typename T> 
+template<typename T>
 struct Vec4 {
 	union {
 		struct { T x, y, z, w; };
@@ -67,12 +61,46 @@ struct Vec4 {
 	T& operator [](const int i) { return data[i]; }
 	const T& operator [](const int i) const { return data[i]; }
 
-	//	Dot Product
-	T       operator *(const Vec4<T>& v) const { return x * v.x + y * v.y + z * v.z + w * v.w; }
-
-	float norm() const { return std::sqrt(x * x + y * y + z * z + w * w); }
-	Vec4<T>& normalize(T l = 1) { *this = (*this) * (l / norm()); return *this; }
+	float length() const { return std::sqrt(x * x + y * y + z * z + w * w); }
+	Vec4<T>& normalize(T l = 1) { *this = (*this) * (l / length()); return *this; }
 };
+
+// Dot Product 
+template <typename T>
+T dot(Vec2<T> v1, Vec2<T> v2) {
+	T res = 0;
+	res += (v1.x * v2.x);
+	res += (v1.y * v2.y);
+	return res;
+}
+
+template <typename T>
+T dot(Vec3<T> v1, Vec3<T> v2) {
+	T res = 0;
+	res += (v1.x * v2.x);
+	res += (v1.y * v2.y);
+	res += (v1.z * v2.z);
+	return res;
+}
+
+template <typename T>
+T dot(Vec4<T> v1, Vec4<T> v2) {
+	T res = 0;
+	res += (v1.x * v2.x);
+	res += (v1.y * v2.y);
+	res += (v1.z * v2.z);
+	res += (v1.w * v2.w);
+	return res;
+}
+
+
+//	Cross Product 
+template <typename T>
+Vec3<T> cross(Vec3<T> v1, Vec3<T> v2) {
+	return Vec3<T>(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
+}
+
+
 
 template <typename T> std::ostream& operator<<(std::ostream& s, Vec2<T>& v) {
 	s << "(" << v.x << ", " << v.y << ")\n";
@@ -90,6 +118,8 @@ template <typename T> std::ostream& operator<<(std::ostream& s, Vec4<T>& v) {
 }
 
 
+
+
 template <typename T>
 struct Mat3 {
 	Vec3<T> data[3];
@@ -101,8 +131,8 @@ struct Mat3 {
 	}
 	Mat3(std::initializer_list<std::initializer_list<T>> init_list) {
 		int i = 0, j = 0;
-		for (std::initializer_list<T> row: init_list) {
-			for (T num: row) {
+		for (std::initializer_list<T> row : init_list) {
+			for (T num : row) {
 				data[i][j] = num;
 				j++;
 			}
@@ -139,14 +169,14 @@ struct Mat3 {
 		}
 		return M;
 	}
-	
+
 	// Matrix-Vector multiplication
 	Vec3<T> operator*(const Vec3<T>& V) const {
 		Vec3<T> R;
 		//for (int i = 0; i < 3; i++) {
-			R.x = (data[0][0] * V.x + data[0][1] * V.y + data[0][2] * V.z);
-			R.y = (data[1][0] * V.x + data[1][1] * V.y + data[1][2] * V.z);
-			R.z = (data[2][0] * V.x + data[2][1] * V.y + data[2][2] * V.z);
+		R.x = (data[0][0] * V.x + data[0][1] * V.y + data[0][2] * V.z);
+		R.y = (data[1][0] * V.x + data[1][1] * V.y + data[1][2] * V.z);
+		R.z = (data[2][0] * V.x + data[2][1] * V.y + data[2][2] * V.z);
 		//}
 		return R;
 	}
@@ -155,8 +185,8 @@ struct Mat3 {
 
 template <typename T> std::ostream& operator<<(std::ostream& s, Mat3<T>& m) {
 	s << "(" << m[0][0] << ", " << m[0][1] << ", " << m[0][2] << ")\n"
-	  << "(" << m[1][0] << ", " << m[1][1] << ", " << m[1][2] << ")\n"
-	  << "(" << m[2][0] << ", " << m[2][1] << ", " << m[2][2] << ")\n";
+		<< "(" << m[1][0] << ", " << m[1][1] << ", " << m[1][2] << ")\n"
+		<< "(" << m[2][0] << ", " << m[2][1] << ", " << m[2][2] << ")\n";
 	return s;
 }
 
@@ -227,7 +257,7 @@ struct Mat4 {
 };
 
 template <typename T> std::ostream& operator<<(std::ostream& s, Mat4<T>& m) {
-	  s << "(" << m[0][0] << ", " << m[0][1] << ", " << m[0][2] << ", " << m[0][3] << ")\n"
+	s << "(" << m[0][0] << ", " << m[0][1] << ", " << m[0][2] << ", " << m[0][3] << ")\n"
 		<< "(" << m[1][0] << ", " << m[1][1] << ", " << m[1][2] << ", " << m[1][3] << ")\n"
 		<< "(" << m[2][0] << ", " << m[2][1] << ", " << m[2][2] << ", " << m[2][3] << ")\n"
 		<< "(" << m[3][0] << ", " << m[3][1] << ", " << m[3][2] << ", " << m[3][3] << ")\n";

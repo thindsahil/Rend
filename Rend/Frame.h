@@ -1,7 +1,7 @@
 //#include <stdlib.h>
 #include <iostream>
 #include <algorithm>
-#include "Geometry.h"
+#include "VecMath.h"
 
 typedef struct FRAMEBITMAP {
     BITMAPINFO BitmapInfo;
@@ -89,7 +89,7 @@ inline void DrawLine(Vec2I a, Vec2I b,  FRAMEBITMAP& frameBuffer, const COLOR32&
 }
 
 //  From https://gamedev.stackexchange.com/a/63203 
-inline Vec3F barycentric(Vec2I a, Vec2I b, Vec2I c, Vec2I p) {
+inline Vec3F barycentric2(Vec2I a, Vec2I b, Vec2I c, Vec2I p) {
     Vec2I v0 = b - a, v1 = c - a, v2 = p - a;
     int den = v0.x * v1.y - v1.x * v0.y;
     float v = (v2.x * v1.y - v1.x * v2.y) / (float) den;
@@ -98,7 +98,7 @@ inline Vec3F barycentric(Vec2I a, Vec2I b, Vec2I c, Vec2I p) {
     return Vec3F(u, v, w);
 }
 
-inline Vec3F barycentricF(Vec3F a, Vec3F b, Vec3F c, Vec3F p) {
+inline Vec3F barycentric3(Vec3F a, Vec3F b, Vec3F c, Vec3F p) {
     Vec3F v0 = b - a, v1 = c - a, v2 = p - a;
     float den = v0.x * v1.y - v1.x * v0.y;
     float v = (v2.x * v1.y - v1.x * v2.y) / den;
@@ -108,7 +108,7 @@ inline Vec3F barycentricF(Vec3F a, Vec3F b, Vec3F c, Vec3F p) {
 }
 
 
-inline void DrawTriangle(Vec2I a, Vec2I b, Vec2I c, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
+inline void DrawTriangle2(Vec2I a, Vec2I b, Vec2I c, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
     //  Bounding box
     int xMin = std::min<int>({ a.x, b.x, c.x }); xMin = std::max<int>( 0, xMin );
     int xMax = std::max<int>({ a.x, b.x, c.x }); xMax = std::min<int>( frameBuffer.BitmapInfo.bmiHeader.biWidth - 1, xMax );
@@ -117,7 +117,7 @@ inline void DrawTriangle(Vec2I a, Vec2I b, Vec2I c, FRAMEBITMAP& frameBuffer, co
 
     for (int x = xMin; x <= xMax; x++) {
         for (int y = yMin; y <= yMax; y++) {
-            Vec3F bc = barycentric(a, b, c, Vec2I(x, y));
+            Vec3F bc = barycentric2(a, b, c, Vec2I(x, y));
             if (bc.x < 0 || bc.y < 0 || bc.z < 0) continue;
             SetPixel(x, y, frameBuffer, color);
         }
@@ -130,7 +130,9 @@ inline void DrawTriangleMesh(Vec3F* pts, FRAMEBITMAP& frameBuffer, const COLOR32
     DrawLine((int) pts[1].x, (int) pts[1].y, (int) pts[2].x, (int) pts[2].y, frameBuffer, color);
 }
 
-inline void DrawTriangleSC(Vec3F* pts, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
+
+//  DrawTriangle with vertices in screen space
+inline void DrawTriangle3(Vec3F* pts, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
     //  Bounding box
     int xMin = std::min<float>({ pts[0].x, pts[1].x, pts[2].x }); xMin = std::max<float>(0, xMin);
     int xMax = std::max<float>({ pts[0].x, pts[1].x, pts[2].x }); xMax = std::min<float>(frameBuffer.BitmapInfo.bmiHeader.biWidth - 1, xMax);
@@ -140,9 +142,35 @@ inline void DrawTriangleSC(Vec3F* pts, FRAMEBITMAP& frameBuffer, const COLOR32& 
     Vec3F P;
     for (P.x = xMin; P.x <= xMax; P.x++) {
         for (P.y = yMin; P.y <= yMax; P.y++) {
-            Vec3F bcScreen = barycentricF(pts[0], pts[1], pts[2], P);
+            Vec3F bcScreen = barycentric3(pts[0], pts[1], pts[2], P);
             if (bcScreen.x < 0 || bcScreen.y < 0 || bcScreen.z < 0) continue;
             SetPixel(P.x, P.y, frameBuffer, color);
+        }
+    }
+}
+
+//  DrawTriangle with vertices in screen space and z buffer
+inline void DrawTriangleZ3(Vec3F* pts, float* zbuf, FRAMEBITMAP& frameBuffer, const COLOR32& color) {
+    //  Bounding box
+    int xMin = std::min<float>({ pts[0].x, pts[1].x, pts[2].x }); xMin = std::max<float>(0, xMin);
+    int xMax = std::max<float>({ pts[0].x, pts[1].x, pts[2].x }); xMax = std::min<float>(frameBuffer.BitmapInfo.bmiHeader.biWidth - 1, xMax);
+    int yMin = std::min<float>({ pts[0].y, pts[1].y, pts[2].y }); yMin = std::max<float>(0, yMin);
+    int yMax = std::max<float>({ pts[0].y, pts[1].y, pts[2].y }); yMax = std::min<float>(frameBuffer.BitmapInfo.bmiHeader.biHeight - 1, yMax);
+
+    Vec3F P;
+    for (P.x = xMin; P.x <= xMax; P.x++) {
+        for (P.y = yMin; P.y <= yMax; P.y++) {
+            Vec3F bcScreen = barycentric3(pts[0], pts[1], pts[2], P);
+            if (bcScreen.x < 0 || bcScreen.y < 0 || bcScreen.z < 0) continue;
+            P.z = 0;
+            P.z += (pts[0].z * bcScreen.x);
+            P.z += (pts[1].z * bcScreen.y);
+            P.z += (pts[2].z * bcScreen.z);
+            //P.z = std::min<float>({pts[0].z,pts[1].z ,pts[2].z });
+            if (zbuf[int(P.x + P.y * frameBuffer.BitmapInfo.bmiHeader.biWidth)] < P.z) {
+                zbuf[int(P.x + P.y * frameBuffer.BitmapInfo.bmiHeader.biWidth)] = P.z;
+                SetPixel(P.x, P.y, frameBuffer, color);
+            }
         }
     }
 }
