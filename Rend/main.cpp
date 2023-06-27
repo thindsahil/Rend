@@ -1,16 +1,20 @@
 ﻿#include <iostream>
 #include <stdlib.h>
 #include <limits>
+
 #include "Window.h"
-#include "ObjLoader.h"
+//#include "ObjLoader.h"
 #include "VecMath.h"
+#include "Scene.h"
+#include "Entity/Entity.h"
+#include "Entity/Model.h"
 
 #define WIDTH 800
 #define HEIGHT 600
 
 const COLOR32 RED = { 0,0,0xff, 0xff };
 const COLOR32 BLACK = { 0,0,0, 0xff };
-float depth = 0xff;
+//float depth = 0xff;
 
 COLOR32 randColor() {
     COLOR32 color(rand() % 0xFF, rand() % 0xFF, rand() & 0xFF, 0xFF);
@@ -169,17 +173,13 @@ int main(int argc, char* argv[])
     //return 1;
     //std::cout << "creating window...\n";
     //std::cout << argv[0] << "\n";
+
     Window* pWindow = new Window(WIDTH, HEIGHT);
     FRAMEBITMAP frame = pWindow->GetFrameBuffer();
 
-    ObjLoader loader = ObjLoader();
-    Model model = loader.load("../../../../obj/teapot.obj");
-    if (model.valid) {
-        std::cout << "# of vertices: " << model.vertices.size() << "\n";
-    }
-    else {
-        return 0;
-    }
+    Scene scene = Scene();
+    Entity model = Model("../../../../obj/teapot.obj");
+    scene.addEntity(&model);
 
     //  projection matrix
     float zNear = 0.1f;
@@ -202,17 +202,16 @@ int main(int argc, char* argv[])
     Mat4F rotX = makeRotX(angle/2);
     Mat4F rotY = makeRotY(angle/60);
     Mat4F rotZ = makeRotZ(angle/2);
+
+    //  rotate teapot model
+    model.rotateX(angle/2);
+
+    //  light
     Vec3F light(2, 1, 3);
     light.normalize();
 
+    //  z-buffer
     float* zBuf = new float[WIDTH * HEIGHT];
-
-    //  rotate teapot model by 90 deg initially
-    for (int i = 0; i < model.vertices.size(); i++) {
-        Vec4F temp = Vec4F(model.vertices[i].pos, 1.0);
-        temp = rotX * temp;
-        model.vertices[i].pos = Vec3F(temp.x, temp.y, temp.z);
-    }
 
     bool running = true;
     while (running) {
@@ -225,38 +224,41 @@ int main(int argc, char* argv[])
 
         //  reset Z-Buffer
         std::fill_n(zBuf, WIDTH * HEIGHT, std::numeric_limits<float>::lowest());
-  
-        for (int i = 0; i < model.vertices.size(); i += 3) {
-            Vec3F triangle[3];
-            Vec3F t[3];
-            for (int j = 0; j < 3; j++) {
-                Vec4F V = Vec4F(model.vertices[i + j].pos, 1.0);
-                Vec4F temp = rotY * V;
-                model.vertices[i + j].pos = Vec3F(temp.x, temp.y, temp.z);
+        
+        //  render entities in scene
+        for (Entity* e : scene.getEntities()) {
+            for (int i = 0; i < (*e).vertices.size(); i += 3) {
+                Vec3F triangle[3];
+                Vec3F t[3];
+                for (int j = 0; j < 3; j++) {
+                    Vec4F V = Vec4F((*e).vertices[i + j].pos, 1.0);
+                    Vec4F temp = rotY * V;
+                    (*e).vertices[i + j].pos = Vec3F(temp.x, temp.y, temp.z);
 
-                V = pProj * modelView * temp;
+                    V = pProj * modelView * temp;
 
-                V.x = (V.x / V.w);
-                V.y = (V.y / V.w);
-                V.z = (V.z / V.w);
-                V.w = (V.w / V.w);
+                    V.x = (V.x / V.w);
+                    V.y = (V.y / V.w);
+                    V.z = (V.z / V.w);
+                    V.w = (V.w / V.w);
 
-                t[j] = Vec3F(V.x, V.y, V.z);
-                V = viewport * V;
-                triangle[j] = Vec3F(V.x, V.y, V.z);
+                    t[j] = Vec3F(V.x, V.y, V.z);
+                    V = viewport * V;
+                    triangle[j] = Vec3F(V.x, V.y, V.z);
+
+                }
+
+                Vec3F n = cross(t[2] - t[0], t[1] - t[0]);
+                n.normalize();
+
+                //  colour of face
+                float in = dot(light, n);
+
+                if (in > 0) {
+                    DrawTriangleZ3(triangle, zBuf, frame, COLOR32(in * 0xFF, in * 0xFF, in * 0xFF, 0xFF));
+                }
 
             }
-
-            Vec3F n = cross(t[2] - t[0],t[1] - t[0]);
-            n.normalize();
-
-            //  colour of face
-            float in = dot(light, n);
-
-            if (in > 0) {
-                DrawTriangleZ3(triangle, zBuf,frame, COLOR32(in * 0xFF, in * 0xFF, in * 0xFF, 0xFF));
-            }
-
         }
 
         pWindow->Render();

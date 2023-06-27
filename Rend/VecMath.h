@@ -2,6 +2,9 @@
 //	TODO: FIX LATER
 #pragma once
 
+#include <iostream>
+#include <cmath>
+
 template<typename T>
 struct Vec2 {
 	union {
@@ -274,3 +277,13 @@ typedef Vec4<float> Vec4F;
 typedef Mat3<int> Mat3I;
 typedef Mat3<float> Mat3F;
 typedef Mat4<float> Mat4F;
+
+
+
+
+//	move elsewhere later
+struct Vertex {
+	Vec3F pos;
+	Vec2F UV;
+	Vec3F normal;
+};

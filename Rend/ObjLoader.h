@@ -7,15 +7,10 @@
 #include <vector>
 #include "VecMath.h"
 
-struct Vertex {
-	Vec3F pos;
-	Vec2F UV;
-	Vec3F normal;
-};
 
 typedef std::vector<Vertex> Vertices;
 
-struct Model {
+struct ObjModel {
 	bool valid;
 	std::vector<Vertex> vertices;
 };
@@ -37,7 +32,7 @@ public:
 	ObjLoader(){};
 	~ObjLoader(){};
 
-	Model load(const char* fileName) {
+	ObjModel load(const char* fileName) {
 		std::vector<Vec3F> vertexPositions;
 		std::vector<Vec2F> vertexUVs;
 		std::vector<Vec3F> vertexNormals;
@@ -54,7 +49,7 @@ public:
 		Vec2F tempV2;
 		unsigned int tempInt;
 
-		Model model = {0};
+		ObjModel model = {0};
 		model.valid = false;
 
 		if (!inFile.is_open()) return model;
