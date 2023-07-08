@@ -3,7 +3,6 @@
 #include <limits>
 
 #include "Window.h"
-//#include "ObjLoader.h"
 #include "VecMath.h"
 #include "Scene.h"
 #include "Entity/Entity.h"
@@ -112,6 +111,21 @@ Mat4F makeRotZ(float rotAngleRad) {
     return rot;
 }
 
+Vec3F lineIntersectPlane(Vec3F P, Vec3F planeNormal, Vec3F lineStart, Vec3F lineEnd) {
+
+    planeNormal.normalize();
+    float d = -dot(P, planeNormal);
+    float ad = dot(lineStart, planeNormal);
+    float bd = dot(lineEnd, planeNormal);
+    float t = (-d - ad) / (bd - ad);
+
+    Vec3F lineVec = lineEnd - lineStart;
+    Vec3F intersect = lineVec * t;
+
+    return lineVec + intersect;
+    //return Vec3F();
+}
+
 void processCameraControls(Mat4F& viewMat) {
     if (GetAsyncKeyState(VK_UP)) {
         std::cout << "UP presesd\n";
@@ -180,6 +194,10 @@ int main(int argc, char* argv[])
     Scene scene = Scene();
     Entity model = Model("../../../../obj/teapot.obj");
     scene.addEntity(&model);
+
+    //Entity te = Model("../../../../obj/cube.obj");
+    //scene.addEntity(&te);
+    //te.translate(0, 0, -5);
 
     //  projection matrix
     float zNear = 0.1f;

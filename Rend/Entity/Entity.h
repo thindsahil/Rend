@@ -9,6 +9,7 @@ public:
 
 	std::vector<Vertex>& getVertices();
 	void rotateX(float angle);
+	void translate(float x, float y, float z);
 
 	int numFaces();
 
