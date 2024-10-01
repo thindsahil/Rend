@@ -1,12 +1,19 @@
 #include "Scene.h"
 
 Scene::Scene()
+    :light(2,1,2)
 {
-    return;
+    zBuffer = new float[width* height];
+    light.normalize();
 }
 
 Scene::~Scene()
 {
+    delete[] zBuffer;
+
+    for (auto e : entities) {
+        delete e;
+    }
 }
 
 void Scene::addEntity(Entity* e)
@@ -26,20 +33,20 @@ void Scene::removeEntity(Entity* e)
 
 }
 
-std::vector<Entity*> Scene::getEntities()
+void Scene::draw(Camera& camera, FRAMEBITMAP& frame)
 {
-	return this->entities;
-}
+    //  reset Z-Buffer
+    std::fill_n(zBuffer, width * height, std::numeric_limits<float>::lowest());
 
-void Scene::render(Camera& camera, FRAMEBITMAP& frame)
-{
-    for (auto e : entities) {
+    for (Entity* e : entities) {
+        //e->rotateX(PI / 2);
+        //std::cout <<"blah: " << (*e).vertices.size();
         for (int i = 0; i < (*e).vertices.size(); i += 3) {
             Vec3F triangle[3];
             Vec3F t[3];
             for (int j = 0; j < 3; j++) {
                 Vec4F V = Vec4F((*e).vertices[i + j].pos, 1.0);
-                Vec4F temp = rotateY(PI / 2) * V;
+                Vec4F temp = rotateY(PI / 100) * V;
                 (*e).vertices[i + j].pos = Vec3F(temp.x, temp.y, temp.z);
 
                 V = camera.getProjectionMatrix() * camera.getViewMatrix() * temp;
@@ -58,8 +65,8 @@ void Scene::render(Camera& camera, FRAMEBITMAP& frame)
             Vec3F n = cross(t[2] - t[0], t[1] - t[0]);
             n.normalize();
 
-            //  colour of face
-            float in = dot(light, n);
+            //  colour of face based on light direction
+            float in = dot(light , n);
 
             if (in > 0) {
                 DrawTriangleZ3(triangle, zBuffer, frame, COLOR32(in * 0xFF, in * 0xFF, in * 0xFF, 0xFF));

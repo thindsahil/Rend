@@ -4,7 +4,7 @@
 #include "Window.h"
 #include "Scene.h"
 #include "Camera.h"
-#include "Renderer.h"
+#include "Entity/Model.h"
 
 
 class Program {
@@ -18,10 +18,12 @@ private:
 	Window* window;
 	Scene scene;
 	Camera camera;
-	Renderer renderer;
 	// Camera?
 
 	bool isRunning;
+
+	int WIDTH = 800;
+	int HEIGHT = 600;
 };
 
 #endif

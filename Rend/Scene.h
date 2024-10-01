@@ -16,13 +16,14 @@ public:
 	void addEntity(Entity* e);
 	void removeEntity(Entity* e);
 
-	std::vector<Entity*> getEntities();
-
-	void render(Camera& camera, FRAMEBITMAP& fram);
+	void draw(Camera& camera, FRAMEBITMAP& frame);
 
 
 private:
     float* zBuffer;
+    
+    int width = 800;
+    int height = 600;
 
     Vec3F light; // 1 light for now
 
