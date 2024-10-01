@@ -1,9 +1,12 @@
 // This contains A LOT of duplication and no assertions
 //	TODO: FIX LATER
-#pragma once
+#ifndef VECMATH_H
+#define VECMATH_H
 
 #include <iostream>
 #include <cmath>
+
+const float PI = 3.141592;
 
 template<typename T>
 struct Vec2 {
@@ -287,3 +290,6 @@ struct Vertex {
 	Vec2F UV;
 	Vec3F normal;
 };
+
+
+#endif

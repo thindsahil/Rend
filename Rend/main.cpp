@@ -231,6 +231,11 @@ int main(int argc, char* argv[])
     //  z-buffer
     float* zBuf = new float[WIDTH * HEIGHT];
 
+    std::cout << "nasdiasduas" << std::endl;
+    std::cout << scene.getEntities().size() << std::endl;
+
+    //return 0;
+
     bool running = true;
     while (running) {
         if (!pWindow->ProcessMessages()) {

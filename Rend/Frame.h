@@ -1,7 +1,12 @@
 //#include <stdlib.h>
+
+#ifndef FRAME_H
+#define FRAME_H
+#include <Windows.h>
 #include <iostream>
 #include <algorithm>
 #include "VecMath.h"
+
 
 typedef struct FRAMEBITMAP {
     BITMAPINFO BitmapInfo;
@@ -174,3 +179,5 @@ inline void DrawTriangleZ3(Vec3F* pts, float* zbuf, FRAMEBITMAP& frameBuffer, co
         }
     }
 }
+
+#endif

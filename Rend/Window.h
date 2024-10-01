@@ -1,3 +1,6 @@
+#ifndef WINDOW_H
+#define WINDOW_H
+
 #include <Windows.h>
 #include <stdint.h>
 #include "Frame.h"
@@ -29,3 +32,5 @@ private:
      static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
      void SetupFrameBuffer();
 };
+
+#endif
